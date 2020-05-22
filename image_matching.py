@@ -69,8 +69,8 @@ def compare_moments(moment_1, moment_2):
 
 def successful_test():
     # Read test and database images
-    slicer_images = load_images(".images/phil_slicer/")
-    printer_images = load_images(".images/phil_3d_printed/")
+    slicer_images = load_images("images/phil_slicer/")
+    printer_images = load_images("images/phil_3d_printed/")
 
     for sl_img, pr_img in zip(slicer_images, printer_images):
         sl_hu_moments = calculate_hu_moments(sl_img["image"], 127, IMG_SLICER)
@@ -81,9 +81,9 @@ def successful_test():
 
 def fail_test():
     # Read test and database images
-    slicer_image = load_image(".images/phil_slicer/phil_layer2_slicer.png")
-    successful_image = load_image(".images/phil_3d_printed/phil_layer2_printed.jpg")
-    failed_images = load_images(".images/phil_3d_printed/fault/")
+    slicer_image = load_image("images/phil_slicer/phil_layer2_slicer.png")
+    successful_image = load_image("images/phil_3d_printed/phil_layer2_printed.jpg")
+    failed_images = load_images("images/phil_3d_printed/fault/")
 
     sl_hu_moments = calculate_hu_moments(slicer_image["image"], 127, IMG_SLICER)
     su_hu_moments = calculate_hu_moments(successful_image["image"], 230, IMG_PRINTED)
@@ -100,7 +100,7 @@ def nothing(x):
 
 
 def slider_calibration():
-    image = load_image(".images/phil_3d_printed/phil_layer2_printed.jpg")
+    image = load_image("images/phil_3d_printed/phil_layer2_printed.jpg")
 
     cv2.namedWindow("image", cv2.WINDOW_NORMAL)
     cv2.resizeWindow('image', 600, 600)
