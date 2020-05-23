@@ -13,7 +13,9 @@ import cv2
 import os
 import glob
 
+import numpy as np
 from scipy.spatial import distance
+from matplotlib import pyplot as plt
 
 
 IMG_SLICER = 0
@@ -27,7 +29,7 @@ def load_images(path):
     for f in files:
         images = dict()
         images["name"] = os.path.basename(f)
-        img = cv2.imread(f, cv2.IMREAD_GRAYSCALE)
+        img = cv2.imread(f)
         images["image"] = img
         data.append(images)
 
@@ -37,25 +39,54 @@ def load_images(path):
 def load_image(path):
     image = dict()
     image["name"] = os.path.basename(path)
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    img = cv2.imread(path)
     image["image"] = img
 
     return image
 
 
-def draw_image(image):
-    cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('Image', 600, 600)
-    cv2.imshow('Image', image)
+def draw_image(image, name):
+    cv2.namedWindow(name, cv2.WINDOW_NORMAL)
+    cv2.resizeWindow(name, 600, 600)
+    #cv2.imshow(name, image)
+    cv2.imwrite("images/export/" + name, image)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
 
-def calculate_hu_moments(image, threshold, type):
-    filtered_image = cv2.medianBlur(image, 5)
-    _, im = cv2.threshold(filtered_image, threshold, 255, cv2.THRESH_BINARY_INV if type==IMG_SLICER else cv2.THRESH_BINARY)
-    draw_image(im)
-    moments = cv2.moments(im)
+def filter_slicer_image(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+
+    # Range for lower red
+    lower_red = np.array([0, 120, 70])
+    upper_red = np.array([10, 255, 255])
+    mask1 = cv2.inRange(hsv, lower_red, upper_red)
+
+    # Range for upper red
+    lower_red = np.array([170, 120, 70])
+    upper_red = np.array([180, 255, 255])
+    mask2 = cv2.inRange(hsv, lower_red, upper_red)
+
+    mask = mask1 + mask2
+
+    return mask
+
+
+def filter_printer_image(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    filtered_image = cv2.medianBlur(gray, 11)
+    _, im = cv2.threshold(filtered_image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    kernel = np.ones((11, 11), np.uint8)
+    print(kernel)
+    opening = cv2.morphologyEx(im, cv2.MORPH_OPEN, kernel)
+
+    return opening
+
+
+def calculate_hu_moments(image):
+    moments = cv2.moments(image)
     hu_moments = cv2.HuMoments(moments)
 
     return hu_moments
@@ -73,8 +104,14 @@ def successful_test():
     printer_images = load_images("images/phil_3d_printed/")
 
     for sl_img, pr_img in zip(slicer_images, printer_images):
-        sl_hu_moments = calculate_hu_moments(sl_img["image"], 127, IMG_SLICER)
-        pr_hu_moments = calculate_hu_moments(pr_img["image"], 170, IMG_PRINTED)
+        filtered_image = filter_slicer_image(sl_img["image"])
+        sl_hu_moments = calculate_hu_moments(filtered_image)
+        draw_image(filtered_image, sl_img["name"])
+
+        filtered_image = filter_printer_image(pr_img["image"])
+        pr_hu_moments = calculate_hu_moments(filtered_image)
+        draw_image(filtered_image, pr_img["name"])
+
         diff = compare_moments(sl_hu_moments, pr_hu_moments)
         print("Similarity(" + sl_img["name"] + ", " + pr_img["name"] + " = " + str(diff))
 
@@ -85,46 +122,30 @@ def fail_test():
     successful_image = load_image("images/phil_3d_printed/phil_layer2_printed.jpg")
     failed_images = load_images("images/phil_3d_printed/fault/")
 
-    sl_hu_moments = calculate_hu_moments(slicer_image["image"], 127, IMG_SLICER)
-    su_hu_moments = calculate_hu_moments(successful_image["image"], 230, IMG_PRINTED)
+    filtered_image = filter_slicer_image(slicer_image["image"])
+    sl_hu_moments = calculate_hu_moments(filtered_image)
+    draw_image(filtered_image, slicer_image["name"])
+
+    filtered_image = filter_printer_image(successful_image["image"])
+    su_hu_moments = calculate_hu_moments(filtered_image)
+    draw_image(filtered_image, successful_image["name"])
+
     diff = compare_moments(sl_hu_moments, su_hu_moments)
     print("Similarity(" + slicer_image["name"] + ", " + successful_image["name"] + " = " + str(diff))
+
     for fl_img in failed_images:
-        pr_hu_moments = calculate_hu_moments(fl_img["image"], 230, IMG_PRINTED)
+        filtered_image = filter_printer_image(fl_img["image"])
+        pr_hu_moments = calculate_hu_moments(filtered_image)
+        draw_image(filtered_image, fl_img["name"])
+
         diff = compare_moments(sl_hu_moments, pr_hu_moments)
         print("Similarity(" + slicer_image["name"] + ", " + fl_img["name"] + " = " + str(diff))
 
 
-def nothing(x):
-    pass
-
-
-def slider_calibration():
-    image = load_image("images/phil_3d_printed/phil_layer2_printed.jpg")
-
-    cv2.namedWindow("image", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('image', 600, 600)
-    cv2.createTrackbar('t', 'image', 0, 255, nothing)
-
-    img = cv2.medianBlur(image["image"], 7)
-    ret, th = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)
-
-    while True:
-        cv2.imshow('image', th)
-
-        k = cv2.waitKey(1) & 0xFF
-        if k == 27:
-            break
-
-        threshold = cv2.getTrackbarPos('t', 'image')
-        ret, th = cv2.threshold(img, threshold, 255, cv2.THRESH_BINARY)
-
-    cv2.destroyAllWindows()
-
-
 def main():
-    #successful_test()
+    successful_test()
     fail_test()
+
 
 if __name__== "__main__":
     main()
