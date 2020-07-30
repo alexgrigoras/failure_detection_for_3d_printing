@@ -131,3 +131,4 @@ dmypy.json
 # Idea
 .idea/
 /images/
+model/pre_trained.weights
