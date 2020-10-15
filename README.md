@@ -8,5 +8,8 @@ Failure detection module for 3D printing using Computer Vision.
 1. Object tracking (tracking print head to calculate real position, compared to theoretical position)
 1. Spaghetti error detection (inspired from [TheSpaghettiDetective/TheSpaghettiDetective](https://github.com/TheSpaghettiDetective/TheSpaghettiDetective))
 
+## Implementation
+See [Documentation](documentation.pdf) for mode details.
+
 ## License
 MIT License.
